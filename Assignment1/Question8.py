@@ -4,6 +4,7 @@ import numpy as np
 import random
 import matplotlib.pyplot as plt
 import pandas as pd
+np.random.seed(101110)
 pd.set_option('display.expand_frame_repr', False)
 
 depVar = [-1.0, -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2,
