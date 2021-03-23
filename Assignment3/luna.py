@@ -19,13 +19,15 @@ def load_files(fname_anom, fname_norm):
 def calc_sp_se(conc_outp, a_outp, n_outp):
     sensitivities = []
     specificities = []
+    conc_outp.insert(0, conc_outp[0] - 1)
+    conc_outp.append(conc_outp[-1] + 1)
     for cutoff in conc_outp:
         # Cutoff is our decision boundary
 
         # no. anomalies higher than cutoff
-        sens = len([anom for anom in a_outp if anom >= cutoff]) / len(a_outp)
+        sens = len([anom for anom in a_outp if anom > cutoff]) / len(a_outp)
         # no. normals lower than cutoff
-        spec = len([norm for norm in n_outp if norm < cutoff]) / len(n_outp)
+        spec = len([norm for norm in n_outp if norm <= cutoff]) / len(n_outp)
 
         sensitivities.append(sens)
         specificities.append(spec)
