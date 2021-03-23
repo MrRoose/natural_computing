@@ -34,15 +34,16 @@ def calc_sp_se(conc_outp, a_outp, n_outp):
     return sensitivities, specificities
 
 
-def plot_auc(sensitivities, specificities, p_title):
+def plot_auc(sensitivities, specificities, p_title, path):
+    plt.plot([1, 0], [0, 1], 'b--')
     plt.plot(specificities, sensitivities, 'r--')
-    #plt.plot([1, 0], [0, 1], 'b--')
     plt.xlabel('Specificity')
     plt.ylabel('Sensitivity')
     auc = metrics.auc([1 - sp for sp in specificities], sensitivities)
     plt.title(f'{p_title} - AUC: {auc}')
     plt.axis([1, 0, 0, 1])
-    plt.show()
+    plt.savefig(path)
+    plt.clf()
     return auc
 
 def print_auc(sensitivities, specificities, p_title):
@@ -91,7 +92,8 @@ if __name__ == '__main__':
     fname_norm = folder + "snd-cert.1.normal.lines.vals"
     fname_anom = folder + "snd-cert.1.anom.lines.vals"
     p_title = 'AUC (n = 6, stride = 3, r = 3, cert1'
+    path = 'pathname_placeholder.jpg'
 
     conc_outp, t_outp, e_outp = load_files(fname_anom, fname_norm)
     sensitivities, specificities = calc_sp_se(conc_outp, t_outp, e_outp)
-    plot_auc(sensitivities, specificities, p_title)
+    auc = plot_auc(sensitivities, specificities, p_title, path)
