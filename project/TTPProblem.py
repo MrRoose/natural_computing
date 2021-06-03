@@ -55,8 +55,8 @@ class TTPProblem(Problem[CompositeSolution], ABC):
                     for item_idx in range(n_items):
                         item_line = f.readline().rstrip()
                         item_arr = item_line.split('\t')
-                        # NODE_NR, WEIGHT, PROFIT
-                        items[item_idx, :] = np.array([int(item_arr[3])-1, int(item_arr[2]), int(item_arr[1])])
+                        # NODE_NR, WEIGHT, PROFIT, P:W RATIO
+                        items[item_idx, :] = np.array([int(item_arr[3])-1, int(item_arr[2]), int(item_arr[1]), int(item_arr[1]/item_arr[2])])
 
         items = np.sort(items, axis=0)  # Sort by node nr
 
@@ -84,13 +84,27 @@ class TTPProblem(Problem[CompositeSolution], ABC):
         time_and_value[0, 0] = tour_time
         start_idx_city = self.items_start_idxs[1]
         end_idx_city = self.items_start_idxs[2]
-    for item_idx in range(start_idx_city, end_idx_city):
-        if packing_list[item_idx]:
-            weight += self.items[item_idx, 1]
-            time_and_value[0, 1] += self.items[item_idx, 2]
+        
+        for item_idx in range(start_idx_city, end_idx_city):
+            if packing_list[item_idx]:
+                weight += self.items[item_idx, 1]
+                time_and_value[0, 1] += self.items[item_idx, 2]
 
-    for i in range(len(tour) - 1):
-        pass
+        # Repair mechanism: remove items from plan until capacity is no longer exceeded
+        # Start with items at first city that have smallest profit:weight ratio
+        if weight > self.capacity:
+            # Sort items by city idx then by weight:profit ratio
+            items_sorted_idx = np.lexsort((self.items[:, 3], self.items[:, 0]))
+            packing_sorted = packing_list[items_sorted_idx]
+            for idx, item in enumerate(packing_sorted):
+                if item:
+                    packing_list[items_sorted_idx[idx]] = 0
+                    weight = weight - self.items[items_sorted_idx[idx], 1]
+                    if weight <= self.capacity:
+                        break
+
+        for i in range(len(tour) - 1):
+            pass
 
     def create_solution(self) -> CompositeSolution:
         return None
