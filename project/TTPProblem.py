@@ -139,7 +139,7 @@ class TTPProblem(Problem[CompositeSolution], ABC):
         final_value = np.subtract(np.sum(time_and_value[:, 1]), np.multiply(tour_time, self.renting_ratio))
         # Dropping rate
         #time_and_value[:, 0] = np.power(np.ones((self.n_cities - 1,)) * self.dropping_rate, np.floor(time_and_value[:, 0] / self.C))
-        final_value = np.sum(np.multiply(time_and_value[:,0], time_and_value[:,1]))
+        #final_value = np.sum(np.multiply(time_and_value[:,0], time_and_value[:,1]))
 
         # TODO: either we manually set the objectives of the two sub solutions or we use these two objectives for both solutions
         solution.objectives[0] = tour_time
