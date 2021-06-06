@@ -3,12 +3,14 @@ from abc import ABC, abstractmethod
 from jmetal.core.problem import Problem
 from jmetal.core.solution import BinarySolution, PermutationSolution, CompositeSolution
 
+
 class TTPProblem(Problem[CompositeSolution], ABC):
 
-    def __init__(self, instance: str = None, dropping_rate: float = 0.9, C: float = 10, p_picking: float = 0.25):
+    def __init__(self, instance: str = None, dropping_rate: float = 0.9, C: float = 10, p_picking: float = None):
         super(TTPProblem, self).__init__()
 
-        n_cities, n_items, capacity, min_speed, max_speed, renting_ratio, nodes, items, items_per_city = self.__read_from_file(instance)
+        n_cities, n_items, capacity, min_speed, max_speed, renting_ratio, nodes, items, items_per_city = \
+            self.__read_from_file(instance)
 
         self.n_cities = n_cities
         self.n_items = n_items
@@ -22,14 +24,17 @@ class TTPProblem(Problem[CompositeSolution], ABC):
 
         self.dropping_rate = dropping_rate
         self.C = C
-        self.p_picking = p_picking
+        if p_picking is None:
+            self.p_picking = np.power(1 / n_items, 2 / 3)
+        else:
+            self.p_picking = p_picking
 
         self.number_of_objectives = 2
         self.number_of_variables = n_cities
         self.directions = [self.MINIMIZE, self.MAXIMIZE]
         self.obj_labels = ['f(x,z)', 'g(x,z)']
 
-    def __read_from_file(self, filename: str, sort: bool = False):
+    def __read_from_file(self, filename: str, sort: bool = True):
 
         if filename is None:
             raise FileNotFoundError('Filename can not be None')
@@ -62,7 +67,7 @@ class TTPProblem(Problem[CompositeSolution], ABC):
                         item_line = f.readline().rstrip()
                         item_arr = item_line.split('\t')
                         # NODE_NR, WEIGHT, PROFIT
-                        items[item_idx, :] = np.array([int(item_arr[3])-1, int(item_arr[2]), int(item_arr[1])])
+                        items[item_idx, :] = np.array([int(item_arr[3]) - 1, int(item_arr[2]), int(item_arr[1])])
 
         if sort:
             items = np.sort(items, axis=0)  # Sort by node nr
@@ -78,7 +83,7 @@ class TTPProblem(Problem[CompositeSolution], ABC):
         items_per_city[:, 0] = n_items_per_city
         for city_idx in range(1, n_cities):
             items_in_city = np.ravel(np.argwhere(items[:, 0] == city_idx))
-            items_per_city[city_idx, 1:len(items_in_city)+1] = items_in_city
+            items_per_city[city_idx, 1:len(items_in_city) + 1] = items_in_city
 
         return n_cities, n_items, capacity, min_speed, max_speed, renting_ratio, nodes, items, items_per_city
 
@@ -94,6 +99,7 @@ class TTPProblem(Problem[CompositeSolution], ABC):
         tour = solution.variables[0].variables
         packing_list = solution.variables[1].variables[0]
 
+        # This is not the nicest place to repair, but the easiest for now
         packing_list = self.repair_packing_list(packing_list)
         solution.variables[1].variables[0] = packing_list
 
@@ -101,24 +107,24 @@ class TTPProblem(Problem[CompositeSolution], ABC):
         tour_time += self.node_distance(0, tour[0]) / velocity
 
         for i in range(self.items_per_city[tour[0], 0]):
-            item_idx = self.items_per_city[tour[0], i+1]
+            item_idx = self.items_per_city[tour[0], i + 1]
             if packing_list[item_idx]:
                 cur_weight += self.items[item_idx, 1]
                 time_and_value[0, 1] += self.items[item_idx, 2]
 
         velocity = self.calc_velocity(cur_weight)
 
-        for i in range(0, self.n_cities-2):
+        for i in range(0, self.n_cities - 2):
             idx_city_1 = tour[i]
-            idx_city_2 = tour[i+1]
+            idx_city_2 = tour[i + 1]
             road_time = self.node_distance(idx_city_1, idx_city_2) / velocity
-            time_and_value[0:i+1, 0] += road_time
+            time_and_value[0:i + 1, 0] += road_time
 
             for j in range(self.items_per_city[idx_city_2, 0]):
                 item_idx = self.items_per_city[idx_city_2, j + 1]
                 if packing_list[item_idx]:
                     cur_weight += self.items[item_idx, 1]
-                    time_and_value[i+1, 1] += self.items[item_idx, 2]
+                    time_and_value[i + 1, 1] += self.items[item_idx, 2]
 
             velocity = self.calc_velocity(cur_weight)
 
@@ -133,17 +139,18 @@ class TTPProblem(Problem[CompositeSolution], ABC):
                 cur_weight += self.items[item_idx, 1]
                 time_and_value[-1, 1] += self.items[item_idx, 2]
 
-
         # Calculate g(x,z)
         # Renting rate
         final_value = np.subtract(np.sum(time_and_value[:, 1]), np.multiply(tour_time, self.renting_ratio))
         # Dropping rate
-        #time_and_value[:, 0] = np.power(np.ones((self.n_cities - 1,)) * self.dropping_rate, np.floor(time_and_value[:, 0] / self.C))
-        #final_value = np.sum(np.multiply(time_and_value[:,0], time_and_value[:,1]))
+        # time_and_value[:, 0] = \
+        # np.power(np.ones((self.n_cities - 1,)) * self.dropping_rate, np.floor(time_and_value[:, 0] / self.C))
+        # final_value = np.sum(np.multiply(time_and_value[:, 0], time_and_value[:, 1]))
 
-        # TODO: either we manually set the objectives of the two sub solutions or we use these two objectives for both solutions
+        # TODO: either we manually set the objectives of the two sub solutions or we use these two objectives for
+        #  both solutions
         solution.objectives[0] = tour_time
-        solution.objectives[1] = final_value
+        solution.objectives[1] = -1.0 * final_value  # Needed for maximization
 
     def create_solution(self) -> CompositeSolution:
         binary_solution = BinarySolution(number_of_variables=1, number_of_objectives=2)
@@ -155,7 +162,6 @@ class TTPProblem(Problem[CompositeSolution], ABC):
         permutation_solution.variables = np.random.permutation(np.arange(1, self.n_cities)).tolist()
 
         return CompositeSolution([permutation_solution, binary_solution])
-
 
     def get_name(self) -> str:
         return "TTP"
@@ -191,7 +197,4 @@ class TTPProblem(Problem[CompositeSolution], ABC):
         return np.linalg.norm(node1 - node2)
 
     def calc_velocity(self, cur_weight):
-        #### TO DO
-        if cur_weight > self.capacity:
-            cur_weight = self.capacity
-        return self.max_speed - cur_weight * (self.max_speed - self.min_speed)/self.capacity
+        return self.max_speed - cur_weight * (self.max_speed - self.min_speed) / self.capacity

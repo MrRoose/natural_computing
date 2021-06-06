@@ -6,21 +6,23 @@ from jmetal.operator.mutation import PermutationSwapMutation, BitFlipMutation, C
 from jmetal.problem.singleobjective.knapsack import Knapsack
 from jmetal.util.solution import get_non_dominated_solutions
 from jmetal.util.termination_criterion import StoppingByEvaluations
+from jmetal.lab.visualization import Plot
 
 from TTPProblem import TTPProblem
 import numpy as np
 
+#fn = 'test.ttp'
 fn = 'eil51_n500_bounded-strongly-corr_01.ttp'
 
-problem = TTPProblem(fn)
+problem = TTPProblem(fn, dropping_rate=1, p_picking=0.05)
 mutation_TSP = PermutationSwapMutation(1.0 / problem.n_cities)
-mutation_KP = BitFlipMutation(np.sqrt(1.0 / problem.n_items))
+mutation_KP = BitFlipMutation(0.8)
 mutation_TTP = CompositeMutation([mutation_TSP, mutation_KP])
 crossover_TSP = PMXCrossover(0.8)
 crossover_KP = SPXCrossover(0.8)
 crossover_TTP = CompositeCrossover([crossover_TSP, crossover_KP])
 
-max_evaluations = 20000
+max_evaluations = 5000
 algorithm = SPEA2(
     problem=problem,
     population_size=200,
@@ -32,21 +34,8 @@ algorithm = SPEA2(
 
 algorithm.run()
 front = get_non_dominated_solutions(algorithm.get_result())
-from jmetal.lab.visualization import Plot
 
+for solution in front:
+    solution.objectives[1] *= -1
 plot_front = Plot(title='Pareto front approximation', axis_labels=['x', 'y'])
 plot_front.plot(front, label='NSGAII-ZDT1', filename='NSGAII-ZDT1', format='png')
-# problem = Knapsack(from_file=True, filename='KnapsackInstance_50_0_0.kp')
-#
-# algorithm = GeneticAlgorithm(
-#     problem=problem,
-#     population_size=100,
-#     offspring_population_size=1,
-#     mutation=BitFlipMutation(probability=0.1),
-#     crossover=SPXCrossover(probability=0.8),
-#     selection=BinaryTournamentSelection(),
-#     termination_criterion=StoppingByEvaluations(max_evaluations=25000)
-# )
-#
-# algorithm.run()
-# subset = algorithm.get_result()
