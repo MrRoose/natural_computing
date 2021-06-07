@@ -63,7 +63,7 @@ def configure_experiment(problem):
 
 fn = 'eil51_n50_bounded-strongly-corr_01.ttp'
 problem = TTPProblem(fn, dropping_rate=1, p_picking=0.05)
-jobs = configure_experiment(problem=problem, n_run=1)
+jobs = configure_experiment(problem=problem)
 
 # Run the study
 output_directory = 'experiments'
